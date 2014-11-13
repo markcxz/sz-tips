@@ -1,0 +1,145 @@
+﻿<!DOCTYPE html>
+<html>
+    <meta charset="UTF-8" />
+    <title>试题编辑器</title>
+    <link href="http://cdn.bootcss.com/bootstrap/3.2.0/css/bootstrap.min.css" rel="stylesheet">
+  <body>
+
+    <div class="container-fluid">    
+          <div class="row">
+              <ul id="myTab" class="nav nav-tabs" role="tablist">
+                <li role="presentation" class="active">
+                  <a href="#markdown" role="tab" data-toggle="tab">编辑界面</a>
+                </li>
+                <li role="presentation">
+                  <a href="#jsonDataResult" role="tab" data-toggle="tab">输出结果</a>
+                </li>
+              </ul>
+          </div>
+              <div class="tab-content">
+                <div role="tabpanel" class="tab-pane active" id="markdown">
+
+                  <div class="row" style="padding:5px">
+                      <div class="col-xs-4">
+                        <div class="input-group input-group-sm">
+                          <span class="input-group-addon">日期</span>
+                          <input id="quizDate" type="text" class="form-control" value="2014-11-13">
+                        </div>
+                      </div>
+                      <div class="col-xs-4">
+                        <div class="input-group input-group-sm">
+                          <span class="input-group-addon">描述</span>
+                          <input id="quizDesc" type="text" class="form-control" value="简要描述">
+                          <span class="input-group-btn">
+                            <button id="btnConvert" type="button" class="btn btn-primary">生成代码</button>
+                          </span>
+                        </div>
+                      </div>
+                      <textarea id="input" class="form-control" rows="24"></textarea>
+                  </div>
+                </div>
+
+                <div role="tabpanel" class="tab-pane" id="jsonDataResult">
+                    <div class="row" style="padding:5px">
+                        <div id="preview" class="hidden"></div>
+                        <textarea id="json" class="form-control" rows="24"></textarea>
+                    </div>
+                </div>
+              </div>     
+        
+    </div>
+
+    
+
+
+
+    <script src="http://cdn.bootcss.com/jquery/1.11.1/jquery.min.js"></script>
+    <script src="http://cdn.bootcss.com/bootstrap/3.2.0/js/bootstrap.min.js"></script>    
+    <script src="./assets/js/markdown.js"></script>
+    <script>
+
+
+
+  $(document).ready(function() {
+      var defValue="题干详细描述。\r\n\r\n- (x) A.\r\n- ( ) B.\r\n- ( ) C.\r\n- ( ) D.\r\n\r\n> 关于答案的解析";
+      defValue=defValue+"\r\n\r\n"+defValue;
+      $("#input").val(defValue);
+      function QuizEditor(input, preview) {
+        this.update = function () {
+          var html= markdown.toHTML(input.val().trim());
+          preview.html(html);
+
+          var data={
+            date:$('#quizDate').val(),
+            desc:$('#quizDesc').val(),
+            quiz:fetchQuiz()
+          };
+
+          $('#json').val(JSON.stringify(data));
+          $('#myTab a:last').tab('show');
+        };
+        input.editor = this;
+      }
+
+      var editor= new QuizEditor($("#input"), $("#preview"));
+      $('#btnConvert').on('click', function() {  
+        editor.update();      
+      });
+
+      function fetchQuiz(){
+        var quizList=[];
+        $("#preview>ul").each(function(idx){
+          var itemsNode= $(this);
+          var quiz={
+            subject:fetchSubject(itemsNode),
+            items:fetchItems(itemsNode),
+            solving:fetchSolving(itemsNode)
+          };
+            quizList.push(quiz);
+        });
+        return quizList;
+      }
+
+      function fetchItems(currNode){
+        var result=[];
+        currNode.children().each(function(idx){
+            var itemText= $(this).html();
+            if(itemText.match(/^([\[(])x([\])])/)){
+              result.push({answer:"y",desc:itemText.replace(/^([\[(])x([\])])/, "")});
+            }else if(itemText.match(/^([\[(])\s*([\])])/)){
+              result.push({answer:"n",desc:itemText.replace(/^([\[(])\s*([\])])/, "")});
+            }
+        });
+        return result;    
+      }
+
+      function fetchSubject(currNode){
+        var node=currNode.prev();
+        var result=[];
+        while(node.is("p")){
+          result.splice(0, 0, node.html());
+          node=node.prev();
+        }
+        return result;
+      }
+
+      function fetchSolving(currNode){
+        var result=[];
+        var node=currNode.next();        
+        while(node.is("blockquote")){
+          node.children().each(function(idx){
+            var child=$(this);
+            if(child.is("p")){
+              result.push(child.html());
+            }
+          });          
+          node=node.next();
+        }
+        return result;
+      }
+
+  });
+
+    </script>
+  </body>
+</html>
